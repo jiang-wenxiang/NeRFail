@@ -13,53 +13,57 @@ to8b = lambda x : (255*np.clip(x,0,1)).astype(np.uint8)
 
 # Positional encoding (section 5.1)
 class Embedder:
-    def __init__(self, **kwargs):
+    def __init__(self, device=None, **kwargs):
         self.kwargs = kwargs
-        self.create_embedding_fn()
-        
-    def create_embedding_fn(self):
+        self.create_embedding_fn(device)
+
+    def create_embedding_fn(self, device=None):
         embed_fns = []
         d = self.kwargs['input_dims']
         out_dim = 0
         if self.kwargs['include_input']:
-            embed_fns.append(lambda x : x)
+            embed_fns.append(lambda x: x)
             out_dim += d
-            
+
         max_freq = self.kwargs['max_freq_log2']
         N_freqs = self.kwargs['num_freqs']
-        
+
         if self.kwargs['log_sampling']:
-            freq_bands = 2.**torch.linspace(0., max_freq, steps=N_freqs)
+            freq_bands = 2. ** torch.linspace(0., max_freq, steps=N_freqs)
         else:
-            freq_bands = torch.linspace(2.**0., 2.**max_freq, steps=N_freqs)
-            
+            freq_bands = torch.linspace(2. ** 0., 2. ** max_freq, steps=N_freqs)
+
         for freq in freq_bands:
             for p_fn in self.kwargs['periodic_fns']:
-                embed_fns.append(lambda x, p_fn=p_fn, freq=freq : p_fn(x * freq))
+                if device is not None:
+                    embed_fns.append(lambda x, p_fn=p_fn, freq=freq: p_fn(x * freq.to(device)))
+                else:
+                    embed_fns.append(lambda x, p_fn=p_fn, freq=freq: p_fn(x * freq))
                 out_dim += d
-                    
+
         self.embed_fns = embed_fns
         self.out_dim = out_dim
         
-    def embed(self, inputs):
+    def embed(self, inputs, device=None):
+        if device is not None:
+            inputs.to(device)
         return torch.cat([fn(inputs) for fn in self.embed_fns], -1)
 
-
-def get_embedder(multires, i=0):
+def get_embedder(multires, i=0, device=None):
     if i == -1:
         return nn.Identity(), 3
-    
+
     embed_kwargs = {
-                'include_input' : True,
-                'input_dims' : 3,
-                'max_freq_log2' : multires-1,
-                'num_freqs' : multires,
-                'log_sampling' : True,
-                'periodic_fns' : [torch.sin, torch.cos],
+        'include_input': True,
+        'input_dims': 3,
+        'max_freq_log2': multires - 1,
+        'num_freqs': multires,
+        'log_sampling': True,
+        'periodic_fns': [torch.sin, torch.cos],
     }
-    
-    embedder_obj = Embedder(**embed_kwargs)
-    embed = lambda x, eo=embedder_obj : eo.embed(x)
+
+    embedder_obj = Embedder(device, **embed_kwargs)
+    embed = lambda x, eo=embedder_obj: eo.embed(x, device)
     return embed, embedder_obj.out_dim
 
 

@@ -2,6 +2,7 @@
 data/
 output/
 Create_spatial_point_set/logs/
+model/weights/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

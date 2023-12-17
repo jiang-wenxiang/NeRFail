@@ -14,11 +14,11 @@ from tqdm import tqdm, trange
 
 import matplotlib.pyplot as plt
 
-from nerf.run_nerf_helpers import *
+from nerf_pytorch.run_nerf_helpers import *
 
-from nerf.load_blender import load_blender_data
+from nerf_pytorch.load_blender import load_blender_data
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 np.random.seed(0)
 DEBUG = False
 
@@ -439,7 +439,7 @@ def render_rays(ray_batch,
 def config_parser():
     import configargparse
     parser = configargparse.ArgumentParser()
-    parser.add_argument('--config', is_config_file=True, default='configs/shoe_coord.txt',
+    parser.add_argument('--config', is_config_file=True, default='configs/lego_coord.txt',
                         help='config file path')
     parser.add_argument("--expname", type=str,
                         help='experiment name')
@@ -549,12 +549,7 @@ def config_parser():
     parser.add_argument("--i_video", type=int, default=50000,
                         help='frequency of render_poses video saving')
 
-    parser.add_argument("--i_test_and_val", type=int, default=5000,
-                        help='frequency of test and val saving')
-
     parser.add_argument("--skip", type=int, default=0)
-
-    parser.add_argument("--load_blender_plus", type=bool, default=False)
 
     return parser
 
@@ -567,11 +562,10 @@ def train():
     K = None
 
     images, poses, render_poses, hwf, i_split = load_blender_data(basedir=args.datadir, half_res=args.half_res,
-                                                                  testskip=args.testskip, skip=args.skip,
-                                                                  load_blender_plus=args.load_blender_plus)
+                                                                  testskip=args.testskip)
 
     print('Loaded blender', images.shape, render_poses.shape, hwf, args.datadir)
-    i_train, i_val, i_test, i_train_clear = i_split
+    i_train, i_val, i_test = i_split
 
     near = 0.01
     far = 4.
@@ -581,32 +575,17 @@ def train():
     else:
         images = images[..., :3]
 
-
     # Cast intrinsics to right types
     H, W, focal = hwf
     H, W = int(H), int(W)
     hwf = [H, W, focal]
 
     if K is None:
-        if args.load_blender_plus:
-            K = np.array([
-                [focal[0], 0, 0.5 * W],
-                [0, focal[1], 0.5 * H],
-                [0, 0, 1]
-            ])
-        else:
-            K = np.array([
-                [focal, 0, 0.5 * W],
-                [0, focal, 0.5 * H],
-                [0, 0, 1]
-            ])
-
-    if args.render_test:
-        render_poses = np.array(poses[i_test])
-    elif args.render_train:
-        render_poses = np.array(poses[i_train])
-    elif args.render_val:
-        render_poses = np.array(poses[i_val])
+        K = np.array([
+            [focal, 0, 0.5 * W],
+            [0, focal, 0.5 * H],
+            [0, 0, 1]
+        ])
 
     # Create log dir and copy the config file
     basedir = args.basedir
@@ -633,28 +612,30 @@ def train():
     render_kwargs_train.update(bds_dict)
     render_kwargs_test.update(bds_dict)
 
-    # Move testing data to GPU
-    render_poses = torch.Tensor(render_poses).to(device)
-
     # Short circuit if only rendering out from trained model
     if args.render_only:
         print('RENDER ONLY')
         with torch.no_grad():
             for render_tag in ["test", "train", "val"]:
+
                 if render_tag == "test":
                     # render_test switches to test poses
                     images = images[i_test]
-
+                    render_poses = np.array(poses[i_test])
                 elif render_tag == "train":
                     # render_train switches to train poses
                     images = images[i_train]
-
+                    render_poses = np.array(poses[i_train])
                 elif render_tag == "val":
                     # render_train switches to val poses
                     images = images[i_val]
+                    render_poses = np.array(poses[i_val])
                 else:
                     # Default is smoother render_poses path
                     images = None
+
+                # Move testing data to GPU
+                render_poses = torch.Tensor(render_poses).to(device)
 
                 save_dir_format_str = render_tag
 

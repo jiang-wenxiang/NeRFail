@@ -2,6 +2,7 @@ import os
 import time
 from pathlib import Path
 
+import configargparse
 import cv2
 import numpy as np
 import torch
@@ -22,20 +23,25 @@ from MyDataset import gauss_dataset, gauss_weight_dataset
 from model.GaussNet import gauss_net, create_gauss_w
 from model.MyModel import MyCNN
 
-scene_name = "house_furnishings"
+
+parser = configargparse.ArgumentParser()
+parser.add_argument('--label', type=str, default="lego", help='object name')
+args = parser.parse_args()
+
+scene_name = args.label
 
 base_mask_image_number = 3
 
 # device
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
-index_and_dist_base = "../data/index_and_dist/" + scene_name + "/" + str(base_mask_image_number) + "_images/"
+index_and_dist_base = "../Create_spatial_point_set/logs/blender_paper_" + scene_name + "/index_and_dist/"
 
-gauss_weight_base = "../data/index_and_weight/" + scene_name + "/" + str(base_mask_image_number) + "_images/"
+gauss_weight_base = "../Create_spatial_point_set/logs/blender_paper_" + scene_name + "/index_and_weight/"
 
-test_number = 70
-val_number = 30
-train_number = 50
+test_number = 200
+val_number = 100
+train_number = 100
 
 test_dir = 'test'
 val_dir = 'val'

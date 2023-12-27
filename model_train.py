@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 parser = configargparse.ArgumentParser()
 parser.add_argument('--model_name', type=str, default="inception", help='classifier model name')
 parser.add_argument('--num_classes', type=int, default=8, help='the number of classification')
-parser.add_argument('--data_dir', type=str, default="./data", help='the classification set path')
+parser.add_argument('--data_dir', type=str, default="./data/nerf_synthetic", help='the classification set path')
 args = parser.parse_args()
 
 load_pretrain_weights = False

@@ -561,19 +561,19 @@ def train():
     # Load data
     K = None
 
-    images, poses, render_poses, hwf, i_split = load_blender_data(basedir=args.datadir, half_res=args.half_res,
+    images_all, poses, render_poses, hwf, i_split = load_blender_data(basedir=args.datadir, half_res=args.half_res,
                                                                   testskip=args.testskip)
 
-    print('Loaded blender', images.shape, render_poses.shape, hwf, args.datadir)
+    print('Loaded blender', images_all.shape, render_poses.shape, hwf, args.datadir)
     i_train, i_val, i_test = i_split
 
     near = 0.01
     far = 4.
 
     if args.white_bkgd:
-        images = images[..., :3] * images[..., -1:] + (1. - images[..., -1:])
+        images_all = images_all[..., :3] * images_all[..., -1:] + (1. - images_all[..., -1:])
     else:
-        images = images[..., :3]
+        images_all = images_all[..., :3]
 
     # Cast intrinsics to right types
     H, W, focal = hwf
@@ -620,15 +620,15 @@ def train():
 
                 if render_tag == "test":
                     # render_test switches to test poses
-                    images = images[i_test]
+                    images = images_all[i_test]
                     render_poses = np.array(poses[i_test])
                 elif render_tag == "train":
                     # render_train switches to train poses
-                    images = images[i_train]
+                    images = images_all[i_train]
                     render_poses = np.array(poses[i_train])
                 elif render_tag == "val":
                     # render_train switches to val poses
-                    images = images[i_val]
+                    images = images_all[i_val]
                     render_poses = np.array(poses[i_val])
                 else:
                     # Default is smoother render_poses path

@@ -3,6 +3,7 @@ import shutil
 import time
 from pathlib import Path
 
+import configargparse
 import cv2
 import numpy as np
 import torch
@@ -18,21 +19,19 @@ def get_coord_min_and_max(tensor1):
     return tensor1_coord_min[0], tensor1_coord_max[0]
 
 
-def create_index_and_dist():
-    label = "sofa"
-
+def create_index_and_dist(label, epochs, mask_list):
     # basic_data_dir = "./data/nerf_synthetic/"+label+"/"
     # log_data_dir = "./logs/blender_paper_"+label+"/"
 
-    basic_data_dir = "./data/nerf_scan/" + label + "/"
-    log_data_dir = "./logs/scan_" + label + "/"
+    basic_data_dir = "../data/nerf_synthetic/" + label + "/"
+    log_data_dir = "./logs/blender_paper_" + label + "/"
 
     coord_save_npy_dir_name = "index_and_dist/"
     device = "cuda:0"
 
-    test_coord_npy_dir = log_data_dir + "renderonly_test_099999/"
-    train_coord_npy_dir = log_data_dir + "renderonly_train_099999/"
-    val_coord_npy_dir = log_data_dir + "renderonly_val_099999/"
+    test_coord_npy_dir = log_data_dir + "renderonly_test_"+str(epochs)+"/"
+    train_coord_npy_dir = log_data_dir + "renderonly_train_"+str(epochs)+"/"
+    val_coord_npy_dir = log_data_dir + "renderonly_val_"+str(epochs)+"/"
 
     coord_save_npy_dir = log_data_dir + coord_save_npy_dir_name
 
@@ -40,9 +39,9 @@ def create_index_and_dist():
     train_save_coord_npy_dir = coord_save_npy_dir + "train/"
     val_save_coord_npy_dir = coord_save_npy_dir + "val/"
 
-    train_img_num = 50
-    val_img_num = 30
-    test_img_num = 70
+    train_img_num = 100
+    val_img_num = 100
+    test_img_num = 200
     split_parts = 1600
     top_number = 8
 
@@ -54,7 +53,7 @@ def create_index_and_dist():
     tensor_test_coord = None
 
     # change_target_img_index_list = [0, 15, 25]
-    change_target_img_index_list = [50, 75, 125]
+    change_target_img_index_list = mask_list
     test_index_coord_file_name_list = [os.path.join(test_coord_npy_dir, zero_s[len(str(i))] + str(i) + ".npy") for i in change_target_img_index_list]
 
     test_index_change_list = [torch.from_numpy(np.load(file)).to(device) for file in test_index_coord_file_name_list]
@@ -172,4 +171,9 @@ def create_index_and_dist():
 
 
 if __name__ == '__main__':
-    create_index_and_dist()
+    parser = configargparse.ArgumentParser()
+    parser.add_argument('--label', type=str, default="lego", help='object name')
+    parser.add_argument('--epochs', type=int, default=199999, help='the number of nerf model retrain')
+    mask_list = [50, 75, 125]
+    args = parser.parse_args()
+    create_index_and_dist(label=args.label, epochs=args.epochs, mask_list=mask_list)

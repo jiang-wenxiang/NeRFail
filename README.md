@@ -22,3 +22,44 @@ cd ..
 ```shell
 python nerf_to_coord.py --config ./configs/lego_coord.txt 
 ```
+
+```shell
+python create_index_and_dist.py --label lego --epochs 199999
+```
+
+```shell
+cd ../tools
+```
+
+```shell
+python dist_to_weight.py --label lego
+```
+
+```shell
+cd ..
+```
+
+
+```shell
+python model_train.py --model_name inception --num_classes 8 --data_dir ./data/nerf_synthetic
+```
+testing for classification model using original test image set
+```shell
+python model_test.py --model_name inception
+```
+
+```shell
+python attack_IGSM_2D.py --label lego --model_name inception --e 32 --attack_target_label_int 4
+```
+
+```shell
+python attack_NeRFail_S.py --label lego --model_name inception --e 32 --attack_target_label_int 4
+```
+
+```shell
+python attack_NeRFail.py --label lego --model_name inception --e 32 --attack_target_label_int 4 --m1 8 --m2 100
+```
+
+```shell
+python attack_UAP_2D.py --label lego --model_name inception --e 32 --attack_target_label_int 4 --m1 8 --m2 100
+```

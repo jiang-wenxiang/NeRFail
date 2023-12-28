@@ -400,8 +400,9 @@ def test_for_inception(scene_name = "lego", model_name = "vgg16", now_class_idx 
 if __name__ == '__main__':
     parser = configargparse.ArgumentParser()
     parser.add_argument('--e', type=int, default=32)
+    parser.add_argument('--a', type=int, default=2)
     parser.add_argument('--m1', type=int, default=8)
-    parser.add_argument('--m2', type=int, default=8)
+    parser.add_argument('--m2', type=int, default=100)
     parser.add_argument('--base_mask_image_number', type=int, default=3)
     parser.add_argument('--setname', type=str, default='test')
     parser.add_argument('--step', type=int, default=0)
@@ -412,8 +413,10 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    test_for_inception(print_e=args.e, model_name=args.model_name, base_mask_image_number=args.base_mask_image_number, m1=args.m1,
-                       m2=args.m2, setname=args.setname, step=args.step, method_name=args.method_name, target_class_idx=args.target_class_idx,
+    test_for_inception(print_e=args.e, print_a=args.a, model_name=args.model_name,
+                       base_mask_image_number=args.base_mask_image_number, m1=args.m1,
+                       m2=args.m2, setname=args.setname, step=args.step,
+                       method_name=args.method_name, target_class_idx=args.target_class_idx,
                        scene_name=args.label)
 
     # print_e_list = [32, 32, 32, 32]

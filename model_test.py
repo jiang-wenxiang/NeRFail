@@ -76,7 +76,7 @@ def test_for_inception(scene_name = "lego", model_name = "vgg16", now_class_idx 
         print_tab = "test for model: " + model_name
     else:
         if method_name == "IGSM":
-            method_name = "NeRFail-S"
+            method_name = "NeRFail_S"
         elif method_name == "Universal":
             method_name = "NeRFail"
 
@@ -405,7 +405,7 @@ if __name__ == '__main__':
     parser.add_argument('--m2', type=int, default=100)
     parser.add_argument('--base_mask_image_number', type=int, default=3)
     parser.add_argument('--setname', type=str, default='test')
-    parser.add_argument('--step', type=int, default=0)
+    parser.add_argument('--step', type=int, default=1)
     parser.add_argument('--method_name', type=str, default=None)
     parser.add_argument('--label', type=str, default='lego')
     parser.add_argument('--model_name', type=str, default='inception')

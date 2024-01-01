@@ -76,4 +76,31 @@ cd nerf_pytorch
 python run_nerf.py --config ../configs/lego.txt --train_dir ../../output/inception/attack/lego/NeRFail_S_3P_100_to_n_e_32_a_2/train
 ```
 
+```shell
+python run_nerf.py --config ../configs/lego.txt --train_dir ../../output/inception/attack/lego/NeRFail_3P_100_to_n_e_32_m_8_100/train
+```
+
 The Nerf training process has a certain degree of randomness. When the PSNR remains low (PSNR<15), it may be due to getting stuck in a local optimal solution. In this case, you could try terminating the training and restarting.
+
+```shell
+cd ..
+```
+
+```shell
+python nerf_render_only.py --config ./configs/lego_coord.txt
+```
+
+```shell
+cd ..
+```
+
+```shell
+python transfer_files.py --from_dir ./Create_spatial_point_set/logs/blender_paper_lego --model_name inception --label lego --method_name NeRFail_S --target_class_idx n --e 32 --step 1 --base_mask_image_number 3
+```
+```shell
+python model_test.py --model_name inception --label lego --method_name NeRFail_S --target_class_idx n --e 32 --step 1 --base_mask_image_number 3 --setname test
+```
+```shell
+python model_test.py --model_name inception --label lego --method_name NeRFail_S --target_class_idx n --e 32 --step 1 --base_mask_image_number 3 --setname val
+```
+

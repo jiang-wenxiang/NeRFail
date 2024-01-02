@@ -571,7 +571,11 @@ def train():
 
     elif args.dataset_type == 'blender':
         images, poses, render_poses, hwf, i_split = load_blender_data(args.datadir, args.half_res, args.testskip, args.train_dir)
-        print('Loaded blender', images.shape, render_poses.shape, hwf, args.datadir)
+        if args.train_dir is not None:
+            train_images, images = images
+            print('Loaded blender', train_images.shape, images.shape, render_poses.shape, hwf, args.datadir)
+        else:
+            print('Loaded blender', images.shape, render_poses.shape, hwf, args.datadir)
         i_train, i_val, i_test = i_split
 
         near = 2.
@@ -579,8 +583,17 @@ def train():
 
         if args.white_bkgd:
             images = images[...,:3]*images[...,-1:] + (1.-images[...,-1:])
+            if args.train_dir is not None:
+                if train_images.shape[3] > 3:
+                    train_images = train_images[..., :3] * train_images[..., -1:] + (1. - train_images[..., -1:])
         else:
             images = images[...,:3]
+            if args.train_dir is not None:
+                if train_images.shape[3] > 3:
+                    train_images = train_images[...,:3]
+
+        if args.train_dir is not None:
+            images = np.concatenate([train_images, images], axis=0)
 
     elif args.dataset_type == 'LINEMOD':
         images, poses, render_poses, hwf, K, i_split, near, far = load_LINEMOD_data(args.datadir, args.half_res, args.testskip)

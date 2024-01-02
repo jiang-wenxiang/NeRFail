@@ -43,6 +43,10 @@ def load_blender_data(basedir, half_res=False, testskip=1, train_dir=None):
 
     all_imgs = []
     all_poses = []
+
+    train_imgs = []
+    train_poses = []
+
     counts = [0]
     for s in splits:
         meta = metas[s]
@@ -56,20 +60,26 @@ def load_blender_data(basedir, half_res=False, testskip=1, train_dir=None):
         for frame in meta['frames'][::skip]:
             fname = os.path.join(basedir, frame['file_path'] + '.png')
             if s == 'train' and train_dir is not None:
-                os.path.join(train_dir, os.path.basename(fname))
+                fname = os.path.join(train_dir, os.path.basename(fname))
             imgs.append(imageio.imread(fname))
             poses.append(np.array(frame['transform_matrix']))
         imgs = (np.array(imgs) / 255.).astype(np.float32) # keep all 4 channels (RGBA)
         poses = np.array(poses).astype(np.float32)
         counts.append(counts[-1] + imgs.shape[0])
-        all_imgs.append(imgs)
+        if s == 'train' and train_dir is not None:
+            train_imgs.append(imgs)
+        else:
+            all_imgs.append(imgs)
         all_poses.append(poses)
     
     i_split = [np.arange(counts[i], counts[i+1]) for i in range(3)]
     
     imgs = np.concatenate(all_imgs, 0)
     poses = np.concatenate(all_poses, 0)
-    
+
+    if train_dir is not None:
+        train_np_imgs = np.concatenate(train_imgs, 0)
+
     H, W = imgs[0].shape[:2]
     camera_angle_x = float(meta['camera_angle_x'])
     focal = .5 * W / np.tan(.5 * camera_angle_x)
@@ -81,13 +91,22 @@ def load_blender_data(basedir, half_res=False, testskip=1, train_dir=None):
         W = W//2
         focal = focal/2.
 
+        if train_dir is not None:
+            imgs_half_res = np.zeros((train_np_imgs.shape[0], H, W, 4))
+            for i, img in enumerate(train_np_imgs):
+                imgs_half_res[i] = cv2.resize(img, (W, H), interpolation=cv2.INTER_AREA)
+            train_np_imgs = imgs_half_res
+            # imgs = tf.image.resize_area(imgs, [400, 400]).numpy()
+
         imgs_half_res = np.zeros((imgs.shape[0], H, W, 4))
         for i, img in enumerate(imgs):
             imgs_half_res[i] = cv2.resize(img, (W, H), interpolation=cv2.INTER_AREA)
         imgs = imgs_half_res
         # imgs = tf.image.resize_area(imgs, [400, 400]).numpy()
 
-        
-    return imgs, poses, render_poses, [H, W, focal], i_split
+    if train_dir is not None:
+        return [train_np_imgs, imgs], poses, render_poses, [H, W, focal], i_split
+    else:
+        return imgs, poses, render_poses, [H, W, focal], i_split
 
 

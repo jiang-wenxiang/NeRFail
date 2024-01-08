@@ -567,8 +567,8 @@ def train():
     print('Loaded blender', images_all.shape, render_poses.shape, hwf, args.datadir)
     i_train, i_val, i_test = i_split
 
-    near = 0.01
-    far = 4.
+    near = 2.
+    far = 6.
 
     if args.white_bkgd:
         images_all = images_all[..., :3] * images_all[..., -1:] + (1. - images_all[..., -1:])

@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 
 import configargparse
+import cv2
 import numpy as np
 import torch.nn.functional as F
 import torch
@@ -19,7 +20,8 @@ from model.MyModel import MyCNN
 from tools.send_e_mail import send_dict
 
 # device
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 def get_psnr(target, ref):
     # target_data = np.array(target, dtype=np.float64)  # 将图像格式转为 float64
@@ -38,7 +40,8 @@ def get_psnr(target, ref):
 
 def test_for_inception(scene_name = "lego", model_name = "vgg16", now_class_idx = 10, attack_epochs = 100,
                        print_a = 2, print_e = 32, target_class_idx = "n", base_mask_image_number = 3, m1=0, m2=0,
-                       setname = "test", method_name = "NeRFail", step=0, something_need_log: dict = None):
+                       setname = "test", method_name = "NeRFail", step=0, something_need_log: dict = None,
+                       output_dir: str = None):
     # print config
 
     # test config
@@ -46,6 +49,13 @@ def test_for_inception(scene_name = "lego", model_name = "vgg16", now_class_idx 
     class_list = {"chair": 0, "drums": 1, "ficus": 2, "hotdog": 3, "lego": 4, "materials": 5, "mic": 6, "ship": 7}
     # class_list = {"animal": 0, "bottled": 1, "box": 2, "car": 3, "cup": 4, "house_furnishings": 5, "icon": 6,
     #               "office_supplies": 7, "person": 8, "plate": 9, "shoe": 10, "toy": 11, "wear":12}
+
+    class_color_list = [(153, 51, 250), (255,215,0), (61, 145, 64), (255, 127, 80),
+                        (0, 0, 0), (189, 252, 201), (94, 38, 18), (0, 0, 255)]
+
+    re_class_list = {}
+    for key in class_list:
+        re_class_list[class_list[key]] = key
 
     only_print_class = [class_list[scene_name], ]
     # if setname == "test":
@@ -191,7 +201,8 @@ def test_for_inception(scene_name = "lego", model_name = "vgg16", now_class_idx 
     # Create test datasets
     image_datasets = {x: MySimpleDataset(data_dir, x, test_dir_change_dict=test_dir_change_dict,
                                          ori_img_from=ori_img_from, device=device, _3_channels=_3_channels,
-                                         resize_frame=resize_frame, load_later=load_later, resize_frame_size=resize_func) for x in ['test']}
+                                         resize_frame=resize_frame, load_later=load_later,
+                                         resize_frame_size=resize_func, return_img_before_resize=True) for x in ['test']}
     # Create test dataloaders
     dataloaders = {
         x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=False, num_workers=0) for x in ['test']}
@@ -213,7 +224,7 @@ def test_for_inception(scene_name = "lego", model_name = "vgg16", now_class_idx 
 
     # Iterate over data.
     for dataload in tqdm.tqdm(dataloaders['test']):
-        inputs, labels, ori_img = dataload
+        ori_inputs, inputs, labels, ori_img = dataload
 
         if int(labels.data) not in ori_img_from.keys():
             ori_img = None
@@ -293,6 +304,16 @@ def test_for_inception(scene_name = "lego", model_name = "vgg16", now_class_idx 
             running_loss_dict[str(int(labels.data))] = loss.item() * inputs.size(0)
             running_corrects_dict[str(int(labels.data))] = torch.sum(preds == labels.data)
             class_image_length[str(int(labels.data))] = inputs.size(0)
+
+        if int(labels.data) in only_print_class and output_dir is not None:
+            output_img_path = os.path.join(output_dir, "r_" + str(i % 200)+".png")
+            prod = (torch.exp(outputs) / torch.exp(outputs).sum())
+            prod = torch.max(prod)
+            text = re_class_list[int(preds)] + ": " + "{:.2f}".format(prod * 100) + "%"
+            img = np.ascontiguousarray(np.uint8(ori_inputs.squeeze(0).transpose(0, 1).transpose(1, 2).cpu().detach().numpy()))
+            cv2.putText(img, text, (100, 100), fontFace=cv2.FONT_HERSHEY_TRIPLEX, fontScale=1,
+                    color=class_color_list[int(preds)], thickness=1)
+            cv2.imwrite(output_img_path, img)
 
         if preds != labels.data:
 
@@ -410,6 +431,7 @@ if __name__ == '__main__':
     parser.add_argument('--label', type=str, default='lego')
     parser.add_argument('--model_name', type=str, default='inception')
     parser.add_argument('--target_class_idx', default='n')
+    parser.add_argument('--output_dir', type=str, default=None)
 
     args = parser.parse_args()
 
@@ -417,7 +439,7 @@ if __name__ == '__main__':
                        base_mask_image_number=args.base_mask_image_number, m1=args.m1,
                        m2=args.m2, setname=args.setname, step=args.step,
                        method_name=args.method_name, target_class_idx=args.target_class_idx,
-                       scene_name=args.label)
+                       scene_name=args.label, output_dir=args.output_dir)
 
     # print_e_list = [32, 32, 32, 32]
     # base_mask_image_number_list = [3, 3, 3, 3]

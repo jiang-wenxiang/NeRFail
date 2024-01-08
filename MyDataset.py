@@ -27,7 +27,8 @@ def find_classes(directory: Path) -> Tuple[List[str], Dict[str, int]]:
 
 class MySimpleDataset(Dataset):
     def __init__(self, root: Path, set_name: str, class_names_path: Path = None, test_dir_change_dict: dict = None, ori_img_from: dict=None,
-                 _3_channels=False, resize_frame=False, resize_frame_size=Resize([800, 800]), device='cpu', load_later=False):
+                 _3_channels=False, resize_frame=False, resize_frame_size=Resize([800, 800]), device='cpu', load_later=False,
+                 return_img_before_resize=False):
         self.classes, self.class_to_idx = find_classes(root)
         if class_names_path is not None:
             with open(class_names_path, 'w') as f:
@@ -42,10 +43,12 @@ class MySimpleDataset(Dataset):
 
         self.resize_frame = resize_frame
         self.resize_frame_size = resize_frame_size
+        self.return_img_before_resize = return_img_before_resize
 
         self.img_set = {}
         self.ori_img_set = {}
         self.label_set = {}
+        self.img_set_before_resize = {}
 
         self.device = device
 
@@ -100,6 +103,9 @@ class MySimpleDataset(Dataset):
                             tensor_img_rgb = tensor_img[:3, :, :]
                             tensor_img_white = torch.ones_like(tensor_img_rgb) * 255
                             tensor_img = torch.where(tensor_img_alpha > 0, tensor_img_rgb, tensor_img_white)
+
+                    if self.return_img_before_resize:
+                        self.img_set_before_resize[img_idx] = tensor_img.detach().clone()
 
                     if self.resize_frame:
                         tensor_img = self.resize_frame_size(tensor_img)
@@ -156,15 +162,25 @@ class MySimpleDataset(Dataset):
                         tensor_img = torch.where(tensor_img_alpha > 0, tensor_img_rgb, tensor_img_white)
 
                 if self.resize_frame:
-                    tensor_img = self.resize_frame_size(tensor_img)
-
-                return tensor_img.detach().clone(), self.label_set[idx]
+                    tensor_img_resize = self.resize_frame_size(tensor_img)
+                    if self.return_img_before_resize:
+                        return tensor_img.detach().clone(), tensor_img_resize.detach().clone(), self.label_set[idx]
+                    else:
+                        return tensor_img_resize.detach().clone(), self.label_set[idx]
+                else:
+                    return tensor_img.detach().clone(), tensor_img.detach().clone(), self.label_set[idx]
             else:
+                if self.return_img_before_resize:
+                    return self.img_set_before_resize[idx], self.img_set[idx], self.label_set[idx]
                 return self.img_set[idx], self.label_set[idx]
 
         if idx in self.ori_img_set.keys():
+            if self.return_img_before_resize:
+                return self.img_set_before_resize[idx], self.img_set[idx], self.label_set[idx], self.ori_img_set[idx]
             return self.img_set[idx], self.label_set[idx], self.ori_img_set[idx]
 
+        if self.return_img_before_resize:
+            return self.img_set_before_resize[idx], self.img_set[idx], self.label_set[idx], self.img_set[idx]
         return self.img_set[idx], self.label_set[idx], self.img_set[idx]
 
 

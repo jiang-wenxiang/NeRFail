@@ -1,20 +1,24 @@
 # NeRFail: Neural Radiance Fields-based multiview adversarial attack
 
-Wenxiang Jiang <sup> * </sup>, Hanwei Zhang <sup> * † </sup>, Xi Wang, Zhongwen Guo <sup> † </sup>, Hao Wang<br>
-(<sup> * </sup> Equal Contribution.)<br>
-(<sup> † </sup> Corresponding Author.)
+Wenxiang Jiang <sup> \* </sup>, Hanwei Zhang <sup> \* \† </sup>, Xi Wang, Zhongwen Guo <sup> \† </sup>, Hao Wang<br>
+(<sup> \* </sup> Equal Contribution.)<br>
+(<sup> \† </sup> Corresponding Author.)
 
 Abstract: *Adversarial attacks, _i.e._ generating adversarial perturbations with a small magnitude to deceive deep neural networks, are important for investigating and improving model trustworthiness. Traditionally, the topic was scoped within 2D images or a full dataset without considering multiview. Benefiting from Neural Radiance Fields (NeRF), one can easily reconstruct a 3D scene with a Multi-Layer Perceptron (MLP) from given 2D views and synthesize photo-realistic renderings from novel vantages. This opens up a door to discussing the possibility of undertaking to attack multiview NeRF network with downstream tasks taking input information from different rendering angles, which we denote _**Ne**ural **R**adiance **F**ields-based multiview **a**dversar**i**a**l** Attack (NeRFail)_. The goal is, given one scene and a subset of views, to deceive the recognition tasks of different unknown view angles as well as given views. To do so, we propose a transformation to mapping from pixels to 3D points so that our attack generates multiview adversarial perturbations by attacking a subset of images with different views against the downstream classification model to images rendered by NeRF from other views. Experiments show that our multiview adversarial perturbations successfully obfuscate the downstream classification at both known and unknown views. Notably, when retraining another NeRF on the training data with generated multiview perturbations, we show that the perturbation can be inherited and reproduced from the attacking agnostic model.*
 
+**This paper has been accepted for the AAAI 2024 conference and is expected to be able to be queried after the conference.**
+
 ![NeRFail attack image](assets/NeRFail.png)
+
+
 
 ## Funding and Acknowledgments
 This work received support from the National Key Research and Development Program of China (No. 2020YFB1707701) and the National Natural Science Foundation of China (Grant No. 61827810). <br>
-This work also received support from DFG under grant No. 389792660 as part of TRR 248 <sup> * </sup> and VolkswagenStiftung as part of Grant AZ 98514 <sup> † </sup>. <br>
+This work also received support from DFG under grant No. 389792660 as part of TRR 248 <sup> \* </sup> and VolkswagenStiftung as part of Grant AZ 98514 <sup> \† </sup>. <br>
 Wenxiang Jiang was funded by the China Scholarship Council (CSC).
 
-(<sup> * </sup> CPEC:https://perspicuous-computing.science)<br>
-(<sup> † </sup> EIS:https://explainable-intelligent.systems)
+(<sup> \* </sup> CPEC:https://perspicuous-computing.science)<br>
+(<sup> \† </sup> EIS:https://explainable-intelligent.systems)
 
 ## Overview
 

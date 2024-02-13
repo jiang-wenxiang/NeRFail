@@ -220,30 +220,28 @@ python transfer_files.py --from_dir ./Create_spatial_point_set/logs/blender_pape
 
 Test the NeRF rendering results using the appropriate experimental parameters, before doing so you should make sure that the rendering results have been located under the correct path.
 
-Example 1: Testing test set images rendered by NeRF training using FeRFail-S attacked result.
+Example 1: Testing test set images rendered by NeRF training using NeRFail-S attacked result.
 
 ```shell
 python model_test.py --model_name inception --label lego --method_name NeRFail_S --target_class_idx n --e 32 --step 1 --base_mask_image_number 3 --setname test
 ```
 
-Example 2: Testing val set images rendered by NeRF training using FeRFail-S attacked result.
+Example 2: Testing val set images rendered by NeRF training using NeRFail-S attacked result.
 
 ```shell
 python model_test.py --model_name inception --label lego --method_name NeRFail_S --target_class_idx n --e 32 --step 1 --base_mask_image_number 3 --setname val
 ```
 
-Example 3: Testing test set images rendered by NeRF training using FeRFail attacked result.
+Example 3: Testing test set images rendered by NeRF training using NeRFail attacked result.
 
 ```shell
-python model_test.py --model_name inception --label lego --method_name NeRFail --target_class_idx n --e 32 --step 1 --base_mask_image_numbe
-r 3 --setname test --m1 8 --m2 100
+python model_test.py --model_name inception --label lego --method_name NeRFail --target_class_idx n --e 32 --step 1 --base_mask_image_number 3 --setname test --m1 8 --m2 100
 ```
 
-Example 4: Testing val set images rendered by NeRF training using FeRFail attacked result.
+Example 4: Testing val set images rendered by NeRF training using NeRFail attacked result.
 
 ```shell
-python model_test.py --model_name inception --label lego --method_name NeRFail --target_class_idx n --e 32 --step 1 --base_mask_image_numbe
-r 3 --setname val --m1 8 --m2 100
+python model_test.py --model_name inception --label lego --method_name NeRFail --target_class_idx n --e 32 --step 1 --base_mask_image_number 3 --setname val --m1 8 --m2 100
 ```
 
 ### Randomness

@@ -47,7 +47,7 @@ m1 = args.m1
 m2 = args.m2
 attack_epochs = 100
 
-m2_max_limit = 1000000
+m2_max_limit = 10000
 
 # model_name = "my_model"
 model_name = args.model_name

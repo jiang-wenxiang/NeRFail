@@ -201,7 +201,9 @@ def deepfool(net_input, e, net, num_classes = 8, max_iter = 20, target_label:int
     #         print(approx_loss)
     #         # print(grad_max)
 
-    return (overshoot*rot), loop_i, ori_cla_max_index, cla_max_index, spatial_rgb
+    rot = (spatial_rgb - spatial_rgb_0).detach()
+
+    return rot, loop_i, ori_cla_max_index, cla_max_index, spatial_rgb
 
 
 

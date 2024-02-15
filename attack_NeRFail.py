@@ -42,10 +42,12 @@ targeted_attack = args.targeted_attack
 attack_target_label_int = args.attack_target_label_int
 
 epsilon = args.e
-m1_list = [args.m1]
-m1 = max(m1_list)
+m1_list = [0, args.m1]
+m1 = args.m1
 m2 = args.m2
 attack_epochs = 100
+
+m2_max_limit = 10000
 
 # model_name = "my_model"
 model_name = args.model_name
@@ -68,7 +70,7 @@ simple_rate = 1
 accumulated_incomplete_attack = False
 
 # device
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 # other config
 expname = scene_name + "_attack_NeRFail"
@@ -225,7 +227,7 @@ model.load_state_dict(pretrain_model)
 
 # init attack net
 change_target_tensor = torch.stack(change_target_img_list)
-net = gauss_net(device, c, model, model_name)
+net = gauss_net(device, c, model, model_name, epsilon)
 
 net.to(device)
 
@@ -237,8 +239,10 @@ dataset = gauss_dataset(all_index_and_weight_name_list + val_index_and_weight_na
 
 dataloader = DataLoader(dataset=dataset, batch_size=batch_size)
 
-dataset_rand_select = gauss_dataset_rand_select(all_index_and_weight_name_list, all_img_name_list, all_img_save_to_name_list, all_img_mask_save_to_name_list, device, select_rate=simple_rate)
-dataloader_rand_select = DataLoader(dataset=dataset_rand_select, batch_size=batch_size)
+dataset_rand_select = gauss_dataset_rand_select(all_index_and_weight_name_list, all_img_name_list,
+                                                all_img_save_to_name_list, all_img_mask_save_to_name_list,
+                                                device, select_rate=simple_rate)
+dataloader_rand_select = DataLoader(dataset=dataset_rand_select, batch_size=batch_size, shuffle=True)
 
 # train
 since = time.time()
@@ -261,7 +265,7 @@ dataset_type = 'test'
 change_target_tensor = torch.tensor(change_target_tensor, dtype=torch.float)
 
 if rand_init_mask:
-    change_target_tensor_rand = torch.rand_like(change_target_tensor) * 255
+    change_target_tensor_rand = torch.rand_like(change_target_tensor) * epsilon
     target_alpha = change_target_tensor[:, :, :, 3].unsqueeze(-1)
     change_target_tensor = torch.where(target_alpha > 0, change_target_tensor_rand, change_target_tensor)
 
@@ -274,6 +278,7 @@ if zero_init_mask:
 change_target_tensor_init = change_target_tensor.detach().clone()
 change_target_tensor_best = change_target_tensor.detach().clone()
 
+
 def project_perturbation(data_point, p, perturbation):
     if p == 2:
         perturbation = perturbation * min(1, data_point / torch.norm(perturbation.flatten(1)))
@@ -281,10 +286,13 @@ def project_perturbation(data_point, p, perturbation):
         perturbation = torch.clamp(perturbation, -data_point, data_point)
     return perturbation
 
+
 attack_epoch_acc_best = 0
 attack_epoch_loss_best = 0
 
 m1_best = 0
+m2_best = 0
+
 if targeted_attack:
     attack_epoch_acc_best = 0
 else:
@@ -293,8 +301,8 @@ else:
 epoch = 0
 need_to_log_dict = {}
 
-m1_index = 0
-m1 = m1_list[m1_index]
+# m1_index = 1
+# m1 = m1_list[m1_index]
 
 while epoch < attack_epochs:
     print("Attack ...... ["+str(epoch)+"/"+str(attack_epochs)+"]")
@@ -314,6 +322,11 @@ while epoch < attack_epochs:
     attack_loss = 0.0
     attack_corrects = 0
 
+    no_attack_number_after_last_m2_change = 0
+    attack_number_all_after_last_m2_change = 0
+    # reset m2
+    m2 = args.m2
+
     tensor_not_changed = True
 
     now_dataloader = dataloader_rand_select
@@ -328,6 +341,7 @@ while epoch < attack_epochs:
             change_target_tensor = change_target_tensor_best
             change_target_tensor.requires_grad = False
             print("best m1="+str(m1_best))
+            print("best m2=" + str(m2_best))
             print("best acc=" + str(attack_epoch_acc_best))
 
         net.open_update_epsilon_3d()
@@ -379,7 +393,7 @@ while epoch < attack_epochs:
 
                     # Finding a new minimal perturbation with deepfool to fool the network on this image
                     if targeted_attack:
-                        dr, iter_k, label, k_i, pert_image = deepfool.deepfool(net_input, epsilon, net, max_iter=df_max_iter, target_label = attack_target_label_int, m1=m1, m2=m2)
+                        dr, iter_k, label, k_i, pert_image = deepfool.deepfool(net_input, epsilon, net, max_iter=df_max_iter, target_label=attack_target_label_int, m1=m1, m2=m2)
                     else:
                         dr, iter_k, label, k_i, pert_image = deepfool.deepfool(net_input, epsilon, net, max_iter=df_max_iter, m1=m1, m2=m2)
 
@@ -388,9 +402,16 @@ while epoch < attack_epochs:
                         print("iter_k < df_max_iter")
                         change_target_tensor += dr
                         tensor_not_changed = False
-                        change_target_tensor = project_perturbation(epsilon, torch.inf, change_target_tensor)
-                        change_target_tensor = torch.cat([change_target_tensor[:, :, :, :3], change_target_tensor_init[:, :, :, 3].unsqueeze(-1)], -1)
-
+                        attack_number_all_after_last_m2_change += 1
+                    elif m2 < m2_max_limit:
+                        no_attack_number_after_last_m2_change += 1
+                        attack_number_all_after_last_m2_change += 1
+                        if (attack_number_all_after_last_m2_change > 10 and
+                                (no_attack_number_after_last_m2_change/attack_number_all_after_last_m2_change) > 0.5):
+                            m2 = m2 * 10
+                            print("m2 is too small, times 10 to " + str(m2))
+                            no_attack_number_after_last_m2_change = 0
+                            attack_number_all_after_last_m2_change = 0
 
         elif epoch == (attack_epochs - 1):
             gauss_mask_img_tensor = x.chunk(len(ori_img), dim=0)
@@ -399,6 +420,7 @@ while epoch < attack_epochs:
 
             for gauss_img, gauss_mask_img, img_save_file_name, img_mask_save_file_name, chunk_ori_img in \
                     zip(gauss_img_tensor, gauss_mask_img_tensor, img_save_to_name, img_mask_save_to_name, ori_img_tensor):
+
                 cv2.imwrite(img_save_file_name, gauss_img.squeeze(0).cpu().detach().numpy())
                 cv2.imwrite(img_mask_save_file_name, gauss_mask_img.squeeze(0).cpu().detach().numpy())
                 cv2.imwrite(img_save_file_name.replace(".png", "_ori.png"), chunk_ori_img.squeeze(0).cpu().detach().numpy())
@@ -412,12 +434,33 @@ while epoch < attack_epochs:
         #     print("m1 from "+str(m1_list[m1_index-1])+" to "+str(m1_list[m1_index]))
         #     epoch = attack_epochs - 1
         # else:
-        epoch = attack_epochs - 1
+
+        if m1_list[0] < m1 - 1 and epoch == 0:
+            m1_list[1] = m1
+            m1 = int((m1 + m1_list[0]) / 2)
+            print("m1 from " + str(m1_list[0]) + " to " + str(m1_list[1]) + ", m1=" + str(m1))
+            m2 = args.m2
+            epoch = 0
+        elif m1_list[0] < m1 and epoch == 0:
+            m1_list[1] = m1
+            m1 = m1_list[0]
+            print("m1 from " + str(m1_list[0]) + " to " + str(m1_list[1]) + ", m1=" + str(m1))
+            m2 = args.m2
+            epoch = 0
+        else:
+            epoch = attack_epochs - 1
     elif epoch == attack_epochs - 1:
-        if m1_index < len(m1_list) - 1:
-            m1_index += 1
-            m1 = m1_list[m1_index]
-            print("m1 from "+str(m1_list[m1_index-1])+" to "+str(m1_list[m1_index]))
+        if m1 < m1_list[1] - 1:
+            m1_list[0] = m1
+            m1 = int((m1 + m1_list[1]) / 2)
+            print("m1 from " + str(m1_list[0]) + " to " + str(m1_list[1]) + ", m1=" + str(m1))
+            m2 = args.m2
+            epoch = 0
+        elif m1 < m1_list[1]:
+            m1_list[0] = m1
+            m1 = m1_list[1]
+            print("m1 from " + str(m1_list[0]) + " to " + str(m1_list[1]) + ", m1=" + str(m1))
+            m2 = args.m2
             epoch = 0
         else:
             epoch += 1
@@ -441,16 +484,18 @@ while epoch < attack_epochs:
     net.epsilon_3d_zero()
 
     if targeted_attack:
-        if (attack_epoch_acc >= attack_epoch_acc_best and m1 == m1_best) or m1 > m1_best:
+        if (attack_epoch_acc >= attack_epoch_acc_best and m1 == m1_best) or (m1 > m1_best and attack_epoch_acc > 0):
             attack_epoch_loss_best = attack_epoch_loss
             attack_epoch_acc_best = attack_epoch_acc
             m1_best = m1
+            m2_best = m2
             change_target_tensor_best = change_target_tensor.clone().detach()
     else:
-        if (attack_epoch_acc <= attack_epoch_acc_best and m1 == m1_best) or m1 > m1_best:
+        if (attack_epoch_acc <= attack_epoch_acc_best and m1 == m1_best) or (m1 > m1_best and attack_epoch_acc < 1):
             attack_epoch_loss_best = attack_epoch_loss
             attack_epoch_acc_best = attack_epoch_acc
             m1_best = m1
+            m2_best = m2
             change_target_tensor_best = change_target_tensor.clone().detach()
 
     # wandb.log({'test Loss': epoch_loss, 'test Acc': epoch_acc}, step=epoch)
@@ -467,8 +512,8 @@ print('Attack complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elaps
 
 test_for_inception(print_e=epsilon, model_name=model_name, base_mask_image_number=base_mask_image_number,
                    scene_name=scene_name, target_class_idx=attack_target_label_int,
-                   m1=max(m1_list), m2=m2, setname="test", method_name='NeRFail',  step=0, something_need_log=need_to_log_dict)
+                   m1=args.m1, m2=args.m2, setname="test", method_name='NeRFail',  step=0, something_need_log=need_to_log_dict)
 
 test_for_inception(print_e=epsilon, model_name=model_name, base_mask_image_number=base_mask_image_number,
                    scene_name=scene_name, target_class_idx=attack_target_label_int,
-                   m1=max(m1_list), m2=m2, setname="val", method_name='NeRFail', step=0)
+                   m1=args.m1, m2=args.m2, setname="val", method_name='NeRFail', step=0)

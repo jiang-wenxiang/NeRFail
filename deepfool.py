@@ -8,7 +8,7 @@ import copy
 
 
 def deepfool(net_input, e, net, num_classes = 8, max_iter = 20, target_label:int = None,
-             overshoot: float=0.02, m1: float=1, m2: float=30, universal_2d = False):
+             overshoot: float=0.02, m1: float=1, m2: float=30, universal_2d = False, clip_e = False):
 
     """
        :param image:
@@ -99,7 +99,7 @@ def deepfool(net_input, e, net, num_classes = 8, max_iter = 20, target_label:int
             _, _, cla, _, ori_cla = net(spatial_rgb, weight_and_index, ori_img)
 
         if target_label is None:
-            cla[:, int(ori_cla_max_index)] = cla[:, int(ori_cla_max_index)] + m1  # add
+            cla[:, int(ori_cla_max_index)] = cla[:, int(ori_cla_max_index)] + m1  # add m1
         else:
             cla[:, :int(target_label)] = cla[:, :int(target_label)] + m1  # add m1
             cla[:, int(target_label) + 1:] = cla[:, int(target_label) + 1:] + m1  # add m1
@@ -130,7 +130,7 @@ def deepfool(net_input, e, net, num_classes = 8, max_iter = 20, target_label:int
                 value_r = torch.abs(f_prime) / (torch.norm(grad_cla_s_prime) + 0.0001)
 
                 if value_r < min_value:
-                    dr = (torch.abs(f_prime) / ((torch.norm(grad_cla_s_prime) ** 2)+0.0001)) * grad_cla_s_prime
+                    dr = ((torch.abs(f_prime) / ((torch.norm(grad_cla_s_prime) ** 2)+0.0001)) * grad_cla_s_prime)
                     min_value = value_r
 
         else:
@@ -138,13 +138,19 @@ def deepfool(net_input, e, net, num_classes = 8, max_iter = 20, target_label:int
             grad_cla_s_k = torch.autograd.grad(cla[:, k], spatial_rgb, retain_graph=True, create_graph=True)[0]
             grad_cla_s_o = torch.autograd.grad(cla[:, int(ori_cla_max_index)], spatial_rgb, retain_graph=True, create_graph=True)[0]
 
-            f_prime = cla[:, k] - (cla[:, int(ori_cla_max_index)] + m2)
+            f_prime = cla[:, k] - (cla[:, int(ori_cla_max_index)] + m2)  # add m2
             grad_cla_s_prime = grad_cla_s_k - grad_cla_s_o
 
             dr = ((torch.abs(f_prime) / ((torch.norm(grad_cla_s_prime) ** 2)+0.0001)) * grad_cla_s_prime)
 
         rot = (rot + dr).detach()
+
         spatial_rgb = (spatial_rgb_0 + (overshoot*rot)).detach()
+
+        if clip_e:
+            spatial_rgb = torch.clamp(spatial_rgb, -e, e)
+            spatial_rgb = torch.cat([spatial_rgb[:, :, :, :3], spatial_rgb_0[:, :, :, 3].unsqueeze(-1)], -1)
+
         # spatial_rgb = torch.clamp(spatial_rgb, min=spatial_rgb_min)
         # spatial_rgb = torch.clamp(spatial_rgb, max=spatial_rgb_max)
 

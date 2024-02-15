@@ -5,7 +5,7 @@ from torchvision.transforms import Resize
 
 # part 2: gauss net to compute mask for img
 class gauss_net(nn.Module):
-    def __init__(self, device, c, model, model_name):
+    def __init__(self, device, c, model, model_name, epsilon=None):
         super(gauss_net, self).__init__()
         self.top_number = 8
         self.c = torch.nn.Parameter(torch.tensor([c]), requires_grad=False)
@@ -14,12 +14,15 @@ class gauss_net(nn.Module):
         self.model_name = model_name
         self.torch_resize_299 = Resize([299, 299])
         self.torch_resize_224 = Resize([224, 224])
+        # self.epsilon = epsilon
         self.theta = torch.tensor([
             [1, 0, 0],
             [0, 1, 0]
         ], dtype=torch.float, device=device)
         self.w = 299
         self.h = 299
+
+        self.epsilon = epsilon
 
         self.epsilon_3d_max = 0
         self.epsilon_3d_min = 0
@@ -80,6 +83,7 @@ class gauss_net(nn.Module):
         x = torch.sum(x, dim=-2)
 
         alpha = x[:, :, :, 3].unsqueeze(-1) / 255
+
         ori_img_alpha = ori_img[:, :, :, 3].unsqueeze(-1)
 
         if self.update_epsilon_3d:
@@ -98,7 +102,12 @@ class gauss_net(nn.Module):
             if epsilon_x_min < self.epsilon_3d_min:
                 self.epsilon_3d_min = epsilon_x_min
 
-        x_rgb = ori_img[:, :, :, :3] + x[:, :, :, :3] * alpha
+        # clip to -e - e
+        if self.epsilon is None:
+            x_rgb = ori_img[:, :, :, :3] + x[:, :, :, :3] * alpha
+        else:
+            x_c = torch.clip((x[:, :, :, :3] * alpha), -self.epsilon, self.epsilon)
+            x_rgb = ori_img[:, :, :, :3] + x_c
 
         zeros = torch.zeros_like(x_rgb).to(self.device)
         x_rgb = torch.where(ori_img_alpha > 0, x_rgb, zeros)
@@ -121,6 +130,7 @@ class gauss_net(nn.Module):
                                                                    cla_x_size[2],
                                                                    cla_x_size[3]])
         cla_x_rgb = cla_x[:, :3, :, :]
+
         tensor_255 = torch.ones_like(cla_x_rgb) * 255
         cla_x_3channel = torch.where(cla_x_alpha > 0, cla_x_rgb, tensor_255)
 
@@ -130,6 +140,7 @@ class gauss_net(nn.Module):
                                                                                cla_ori_img_size[2],
                                                                                cla_ori_img_size[3]])
         cla_ori_img_rgb = cla_ori_img[:, :3, :, :]
+
         tensor_255 = torch.ones_like(cla_ori_img_rgb) * 255
         cla_ori_img_3channel = torch.where(cla_ori_img_alpha > 0, cla_ori_img_rgb, tensor_255)
 

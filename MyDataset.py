@@ -205,7 +205,8 @@ class gauss_dataset(Dataset):
 
 
 class gauss_dataset_rand_select(Dataset):
-    def __init__(self, all_index_and_dist_name_list, all_img_name_list, all_img_save_to_name_list, all_img_mask_save_to_name_list, device, select_rate=0.2):
+    def __init__(self, all_index_and_dist_name_list, all_img_name_list, all_img_save_to_name_list,
+                 all_img_mask_save_to_name_list, device, select_rate=0.2):
         rand_seed = 1003
         random.seed(rand_seed)
 
@@ -229,7 +230,6 @@ class gauss_dataset_rand_select(Dataset):
         img_save_to_name = self.all_img_save_to_name_list[index]
         img_mask_save_to_name = self.all_img_mask_save_to_name_list[index]
         return index, ori_img, img_index_and_dist, img_save_to_name, img_mask_save_to_name
-
 
 
 class universal_2D_dataset(Dataset):
@@ -260,7 +260,8 @@ class universal_2D_dataset(Dataset):
 
 
 class universal_2D_dataset_rand_select(Dataset):
-    def __init__(self, all_img_name_list, all_img_save_to_name_list, all_img_mask_save_to_name_list, device, select_rate=0.2):
+    def __init__(self, all_img_name_list, all_img_save_to_name_list, all_img_mask_save_to_name_list, device,
+                 select_rate=0.2):
         rand_seed = 1003
         random.seed(rand_seed)
 

@@ -50,7 +50,7 @@ def test_for_inception(scene_name = "lego", model_name = "vgg16", now_class_idx 
     # class_list = {"animal": 0, "bottled": 1, "box": 2, "car": 3, "cup": 4, "house_furnishings": 5, "icon": 6,
     #               "office_supplies": 7, "person": 8, "plate": 9, "shoe": 10, "toy": 11, "wear":12}
 
-    class_color_list = [(153, 51, 250), (255,215,0), (61, 145, 64), (255, 127, 80),
+    class_color_list = [(153, 51, 250), (255, 215, 0), (61, 145, 64), (255, 127, 80),
                         (0, 0, 0), (189, 252, 201), (94, 38, 18), (0, 0, 255)]
 
     re_class_list = {}
@@ -239,6 +239,7 @@ def test_for_inception(scene_name = "lego", model_name = "vgg16", now_class_idx 
             inputs_alpha = inputs[:, 3, :, :].unsqueeze(1).broadcast_to([inputs_size[0], 3,
                                                                          inputs_size[2], inputs_size[3]])
             inputs_rgb = inputs[:, :3, :, :]
+
             tensor_255 = torch.ones_like(inputs_rgb) * 255
             inputs = torch.where(inputs_alpha > 0, inputs_rgb, tensor_255)
 
@@ -248,6 +249,7 @@ def test_for_inception(scene_name = "lego", model_name = "vgg16", now_class_idx 
                 ori_img_alpha = ori_img[:, 3, :, :].unsqueeze(1).broadcast_to([ori_img_size[0], 3,
                                                                                ori_img_size[2], ori_img_size[3]])
                 ori_img_rgb = ori_img[:, :3, :, :]
+
                 tensor_255 = torch.ones_like(ori_img_rgb) * 255
                 ori_img = torch.where(ori_img_alpha > 0, ori_img_rgb, tensor_255)
 
@@ -310,7 +312,8 @@ def test_for_inception(scene_name = "lego", model_name = "vgg16", now_class_idx 
             prod = (torch.exp(outputs) / torch.exp(outputs).sum())
             prod = torch.max(prod)
             text = re_class_list[int(preds)] + ": " + "{:.2f}".format(prod * 100) + "%"
-            img = np.ascontiguousarray(np.uint8(ori_inputs.squeeze(0).transpose(0, 1).transpose(1, 2).cpu().detach().numpy()))
+            out_ori_inputs = ori_inputs
+            img = np.ascontiguousarray(np.uint8(out_ori_inputs.squeeze(0).transpose(0, 1).transpose(1, 2).cpu().detach().numpy()))
             cv2.putText(img, text, (100, 100), fontFace=cv2.FONT_HERSHEY_TRIPLEX, fontScale=1,
                     color=class_color_list[int(preds)], thickness=1)
             cv2.imwrite(output_img_path, img)

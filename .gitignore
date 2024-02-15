@@ -3,6 +3,7 @@ data/
 output/
 Create_spatial_point_set/logs/
 model/weights/
+model/weights_255/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -11,6 +12,8 @@ __pycache__/
 
 # C extensions
 *.so
+
+*_copy.py
 
 # Distribution / packaging
 .Python

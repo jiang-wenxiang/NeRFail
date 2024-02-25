@@ -8,7 +8,7 @@ import copy
 
 
 def deepfool(net_input, e, net, num_classes = 8, max_iter = 20, target_label:int = None,
-             overshoot: float=0.02, m1: float=1, m2: float=30, universal_2d = False, clip_e = False):
+             overshoot: float=0.02, m1: float=1, m2: float=30, universal_2d = False):
 
     """
        :param image:
@@ -27,35 +27,6 @@ def deepfool(net_input, e, net, num_classes = 8, max_iter = 20, target_label:int
     spatial_rgb_0 = spatial_rgb.clone().detach()
     spatial_rgb = Variable(spatial_rgb, requires_grad=True)
 
-    # setting r approx
-    # r_approx_max = (e * 0.1)
-    # r_approx_loss_func = torch.nn.MSELoss()
-
-    # # setting optimizer when r approx
-    # learning_rata = 10000
-
-    # # setting lower and upper limit for spatial rgb tensor
-    # spatial_rgb_alpha = spatial_rgb_0[:, :, :, 3].unsqueeze(-1)
-    # spatial_rgb_size = spatial_rgb_0.size()
-    #
-    # spatial_rgb_zreos = torch.zeros_like(spatial_rgb_0)
-    #
-    # # spatial_rgb_alpha_mins = torch.zeros_like(spatial_rgb_0) + (1/255)
-    # spatial_rgb_alpha_maxs = torch.ones_like(spatial_rgb_0) * 255
-    #
-    # spatial_rgb_max = torch.ones_like(spatial_rgb_0) * e
-    # spatial_rgb_min = torch.ones_like(spatial_rgb_0) * (-e)
-    #
-    # spatial_rgb_alpha_broadcast = torch.broadcast_to(spatial_rgb_alpha, spatial_rgb_size)
-    #
-    # max_alpha = torch.where(spatial_rgb_alpha > 0, spatial_rgb_alpha_maxs[:, :, :, 3].unsqueeze(-1), spatial_rgb_zreos[:, :, :, 3].unsqueeze(-1))
-    # spatial_rgb_max = torch.where(spatial_rgb_alpha_broadcast > 0, spatial_rgb_max, spatial_rgb_zreos)
-    # spatial_rgb_max = torch.cat((spatial_rgb_max[:, :, :, :3], max_alpha), -1)
-    #
-    # min_alpha = max_alpha # attack do not change alpha channel
-    # spatial_rgb_min = torch.where(spatial_rgb_alpha_broadcast > 0, spatial_rgb_min, spatial_rgb_zreos)
-    # spatial_rgb_min = torch.cat((spatial_rgb_min[:, :, :, :3], min_alpha), -1)
-
     if universal_2d:
         _, _, cla, _, ori_cla = net(spatial_rgb, ori_img)
     else:
@@ -68,28 +39,9 @@ def deepfool(net_input, e, net, num_classes = 8, max_iter = 20, target_label:int
 
     grad_cla_s_0 = torch.autograd.grad(cla_max_0, spatial_rgb, retain_graph=False, create_graph=False)[0]
 
-    # r_k = r_0.clone().detach()
-    #
-    # # setting the lower and upper limit for r
-    # r_k_init = r_0.clone().detach()
-    # r_k_alpha = r_k_init[:, :, :, 3].unsqueeze(-1)
-    # r_k_size = r_k.size()
-    #
-    # r_k_zreos = torch.zeros_like(r_k)
-    # r_k_max = torch.ones_like(r_k) * e
-    # r_k_min = torch.ones_like(r_k) * (-e)
-    #
-    # r_k_alpha_broadcast = torch.broadcast_to(r_k_alpha, r_k_size)
-    #
-    # r_k_max = torch.where(r_k_alpha_broadcast > 0, r_k_max, r_k_zreos)
-    # r_k_min = torch.where(r_k_alpha_broadcast > 0, r_k_min, r_k_zreos)
-
     loop_i = 0
 
     while loop_i < max_iter:
-
-        # if torch.isnan(torch.sum(spatial_rgb)):
-        #     print("spatial_rgb nan before attack! ")
 
         spatial_rgb = Variable(spatial_rgb, requires_grad=True)
 
@@ -146,65 +98,17 @@ def deepfool(net_input, e, net, num_classes = 8, max_iter = 20, target_label:int
         rot = (rot + dr).detach()
 
         spatial_rgb = (spatial_rgb_0 + (overshoot*rot)).detach()
+        spatial_rgb = torch.clamp(spatial_rgb, -255, 255)
 
-        if clip_e:
-            spatial_rgb = torch.clamp(spatial_rgb, -e, e)
+        # alpha channel is not changed
+        if not universal_2d:
             spatial_rgb = torch.cat([spatial_rgb[:, :, :, :3], spatial_rgb_0[:, :, :, 3].unsqueeze(-1)], -1)
 
-        # spatial_rgb = torch.clamp(spatial_rgb, min=spatial_rgb_min)
-        # spatial_rgb = torch.clamp(spatial_rgb, max=spatial_rgb_max)
-
         loop_i += 1
-
-    # d_spa = (spatial_rgb - spatial_rgb_0).detach()
-
-    # loop_j = 0
-    # d_spa = torch.zeros_like(spatial_rgb_0)
-    # spatial_rgb = Variable(spatial_rgb, requires_grad=True)
-    # # optimizer = torch.optim.Adam([spatial_rgb], lr=learning_rata)
-    #
-    # while loop_i < max_iter and loop_j < r_approx_max_iter:
-    #
-    #     spatial_rgb = Variable(spatial_rgb, requires_grad=True)
-    #     # optimizer.zero_grad()
-    #
-    #     r_0 = net_r(spatial_rgb, dist_and_index_list)
-    #
-    #     r_approx = torch.max(torch.abs(r_k[:, :, :, :3] - r_0[:, :, :, :3]))
-    #     if r_approx <= r_approx_max:
-    #         break
-    #
-    #     approx_loss = r_approx_loss_func(r_0, r_k)
-    #     approx_loss.backward()
-    #
-    #     # optimizer.step()
-    #
-    #     spatial_rgb_grad = spatial_rgb.grad.data
-    #
-    #     spatial_rgb = (spatial_rgb - (learning_rata * spatial_rgb_grad)).detach()
-    #     # spatial_rgb = torch.clamp(spatial_rgb, spatial_rgb_min, spatial_rgb_max).detach()
-    #     # spatial_rgb = torch.cat([spatial_rgb[:, :, :, :3], spatial_rgb_alpha], -1)
-    #
-    #     d_spa = (spatial_rgb - spatial_rgb_0).detach()
-    #
-    #     loop_j += 1
-    #
-    #     # if loop_j == 1:
-    #     #     print("----------"+str(loop_j)+"-----------")
-    #     #     print(r_approx)
-    #     #     print(approx_loss)
-    #     #     print(grad_max)
-    #     #
-    #     if loop_j == r_approx_max_iter:
-    #         print("----------"+str(loop_j)+"-----------")
-    #         print(r_approx)
-    #         print(approx_loss)
-    #         # print(grad_max)
 
     rot = (spatial_rgb - spatial_rgb_0).detach()
 
     return rot, loop_i, ori_cla_max_index, cla_max_index, spatial_rgb
-
 
 
 def deepfool_2D_universal(net_input, e, net, num_classes = 8, max_iter = 20, target_label:int = None, overshoot: float=0.02, m1: float=1, m2: float=30):
@@ -223,35 +127,6 @@ def deepfool_2D_universal(net_input, e, net, num_classes = 8, max_iter = 20, tar
     spatial_rgb_0 = spatial_rgb.clone().detach()
     spatial_rgb = Variable(spatial_rgb, requires_grad=True)
 
-    # setting r approx
-    # r_approx_max = (e * 0.1)
-    # r_approx_loss_func = torch.nn.MSELoss()
-
-    # # setting optimizer when r approx
-    # learning_rata = 10000
-
-    # # setting lower and upper limit for spatial rgb tensor
-    # spatial_rgb_alpha = spatial_rgb_0[:, :, :, 3].unsqueeze(-1)
-    # spatial_rgb_size = spatial_rgb_0.size()
-    #
-    # spatial_rgb_zreos = torch.zeros_like(spatial_rgb_0)
-    #
-    # # spatial_rgb_alpha_mins = torch.zeros_like(spatial_rgb_0) + (1/255)
-    # spatial_rgb_alpha_maxs = torch.ones_like(spatial_rgb_0) * 255
-    #
-    # spatial_rgb_max = torch.ones_like(spatial_rgb_0) * e
-    # spatial_rgb_min = torch.ones_like(spatial_rgb_0) * (-e)
-    #
-    # spatial_rgb_alpha_broadcast = torch.broadcast_to(spatial_rgb_alpha, spatial_rgb_size)
-    #
-    # max_alpha = torch.where(spatial_rgb_alpha > 0, spatial_rgb_alpha_maxs[:, :, :, 3].unsqueeze(-1), spatial_rgb_zreos[:, :, :, 3].unsqueeze(-1))
-    # spatial_rgb_max = torch.where(spatial_rgb_alpha_broadcast > 0, spatial_rgb_max, spatial_rgb_zreos)
-    # spatial_rgb_max = torch.cat((spatial_rgb_max[:, :, :, :3], max_alpha), -1)
-    #
-    # min_alpha = max_alpha # attack do not change alpha channel
-    # spatial_rgb_min = torch.where(spatial_rgb_alpha_broadcast > 0, spatial_rgb_min, spatial_rgb_zreos)
-    # spatial_rgb_min = torch.cat((spatial_rgb_min[:, :, :, :3], min_alpha), -1)
-
     _, _, cla, _, ori_cla = net(ori_img, spatial_rgb)
 
     cla_max_0, cla_max_index_0 = torch.max(cla, 1)
@@ -261,28 +136,9 @@ def deepfool_2D_universal(net_input, e, net, num_classes = 8, max_iter = 20, tar
 
     grad_cla_s_0 = torch.autograd.grad(cla_max_0, spatial_rgb, retain_graph=False, create_graph=False)[0]
 
-    # r_k = r_0.clone().detach()
-    #
-    # # setting the lower and upper limit for r
-    # r_k_init = r_0.clone().detach()
-    # r_k_alpha = r_k_init[:, :, :, 3].unsqueeze(-1)
-    # r_k_size = r_k.size()
-    #
-    # r_k_zreos = torch.zeros_like(r_k)
-    # r_k_max = torch.ones_like(r_k) * e
-    # r_k_min = torch.ones_like(r_k) * (-e)
-    #
-    # r_k_alpha_broadcast = torch.broadcast_to(r_k_alpha, r_k_size)
-    #
-    # r_k_max = torch.where(r_k_alpha_broadcast > 0, r_k_max, r_k_zreos)
-    # r_k_min = torch.where(r_k_alpha_broadcast > 0, r_k_min, r_k_zreos)
-
     loop_i = 0
 
     while loop_i < max_iter:
-
-        # if torch.isnan(torch.sum(spatial_rgb)):
-        #     print("spatial_rgb nan before attack! ")
 
         spatial_rgb = Variable(spatial_rgb, requires_grad=True)
 
@@ -328,54 +184,7 @@ def deepfool_2D_universal(net_input, e, net, num_classes = 8, max_iter = 20, tar
 
         rot = (rot + dr).detach()
         spatial_rgb = (spatial_rgb_0 + (overshoot*rot)).detach()
-        # spatial_rgb = torch.clamp(spatial_rgb, min=spatial_rgb_min)
-        # spatial_rgb = torch.clamp(spatial_rgb, max=spatial_rgb_max)
 
         loop_i += 1
-
-    # d_spa = (spatial_rgb - spatial_rgb_0).detach()
-
-    # loop_j = 0
-    # d_spa = torch.zeros_like(spatial_rgb_0)
-    # spatial_rgb = Variable(spatial_rgb, requires_grad=True)
-    # # optimizer = torch.optim.Adam([spatial_rgb], lr=learning_rata)
-    #
-    # while loop_i < max_iter and loop_j < r_approx_max_iter:
-    #
-    #     spatial_rgb = Variable(spatial_rgb, requires_grad=True)
-    #     # optimizer.zero_grad()
-    #
-    #     r_0 = net_r(spatial_rgb, dist_and_index_list)
-    #
-    #     r_approx = torch.max(torch.abs(r_k[:, :, :, :3] - r_0[:, :, :, :3]))
-    #     if r_approx <= r_approx_max:
-    #         break
-    #
-    #     approx_loss = r_approx_loss_func(r_0, r_k)
-    #     approx_loss.backward()
-    #
-    #     # optimizer.step()
-    #
-    #     spatial_rgb_grad = spatial_rgb.grad.data
-    #
-    #     spatial_rgb = (spatial_rgb - (learning_rata * spatial_rgb_grad)).detach()
-    #     # spatial_rgb = torch.clamp(spatial_rgb, spatial_rgb_min, spatial_rgb_max).detach()
-    #     # spatial_rgb = torch.cat([spatial_rgb[:, :, :, :3], spatial_rgb_alpha], -1)
-    #
-    #     d_spa = (spatial_rgb - spatial_rgb_0).detach()
-    #
-    #     loop_j += 1
-    #
-    #     # if loop_j == 1:
-    #     #     print("----------"+str(loop_j)+"-----------")
-    #     #     print(r_approx)
-    #     #     print(approx_loss)
-    #     #     print(grad_max)
-    #     #
-    #     if loop_j == r_approx_max_iter:
-    #         print("----------"+str(loop_j)+"-----------")
-    #         print(r_approx)
-    #         print(approx_loss)
-    #         # print(grad_max)
 
     return (overshoot*rot), loop_i, ori_cla_max_index, cla_max_index, spatial_rgb

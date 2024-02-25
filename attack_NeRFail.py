@@ -181,6 +181,10 @@ elif scene_name == "chair" and base_mask_image_number == 4:
     change_target_img_index_list = [50, 75, 100, 125]
 elif base_mask_image_number == 3:
     change_target_img_index_list = [50, 75, 125]
+elif base_mask_image_number == 2:
+    change_target_img_index_list = [75, 125]
+elif base_mask_image_number == 4:
+    change_target_img_index_list = [50, 75, 100, 125]
 
 change_target_img_name_list = [os.path.join(change_target_path, "r_" + str(i) + ".png") for i in change_target_img_index_list]
 save_target_img_name_list = [os.path.join(save_target_path, str(i) + ".png") for i in change_target_img_index_list]

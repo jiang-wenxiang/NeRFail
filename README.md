@@ -6,11 +6,25 @@ Wenxiang Jiang <sup> \* </sup>, Hanwei Zhang <sup> \* † </sup>, Xi Wang, Zhong
 
 Abstract: *Adversarial attacks, _i.e._ generating adversarial perturbations with a small magnitude to deceive deep neural networks, are important for investigating and improving model trustworthiness. Traditionally, the topic was scoped within 2D images or a full dataset without considering multiview. Benefiting from Neural Radiance Fields (NeRF), one can easily reconstruct a 3D scene with a Multi-Layer Perceptron (MLP) from given 2D views and synthesize photo-realistic renderings from novel vantages. This opens up a door to discussing the possibility of undertaking to attack multiview NeRF network with downstream tasks taking input information from different rendering angles, which we denote _**Ne**ural **R**adiance **F**ields-based multiview **a**dversar**i**a**l** Attack (NeRFail)_. The goal is, given one scene and a subset of views, to deceive the recognition tasks of different unknown view angles as well as given views. To do so, we propose a transformation to mapping from pixels to 3D points so that our attack generates multiview adversarial perturbations by attacking a subset of images with different views against the downstream classification model to images rendered by NeRF from other views. Experiments show that our multiview adversarial perturbations successfully obfuscate the downstream classification at both known and unknown views. Notably, when retraining another NeRF on the training data with generated multiview perturbations, we show that the perturbation can be inherited and reproduced from the attacking agnostic model.*
 
-**This paper has been accepted for the AAAI 2024 conference and is expected to be able to be queried after the conference.**
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <pre><code>@Article{Jiang_Zhang_Wang_Guo_Wang_2024,
+      author       = {Jiang, Wenxiang and Zhang, Hanwei and Wang, Xi and Guo, Zhongwen and Wang, Hao},
+      title        = {NeRFail: Neural Radiance Fields-Based Multiview Adversarial Attack}, 
+      journal      = {Proceedings of the AAAI Conference on Artificial Intelligence}, 
+      number       = {19},
+      volume       = {38}, 
+      pages        = {21197-21205}, 
+      month        = {Mar},
+      year         = {2024},
+      url          = {https://ojs.aaai.org/index.php/AAAI/article/view/30113},
+      DOI          = {10.1609/aaai.v38i19.30113}
+}</code></pre>
+  </div>
+</section>
 
 ![NeRFail attack image](assets/NeRFail.png)
-
-
 
 ## Funding and Acknowledgments
 This work received support from the National Key Research and Development Program of China (No. 2020YFB1707701) and the National Natural Science Foundation of China (Grant No. 61827810). <br>
